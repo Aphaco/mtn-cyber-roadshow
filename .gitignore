@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+# Environment variables (CRITICAL - contains API keys)
+.env
+.env.local
+.env.production
+.env.development
 
 # Editor directories and files
 .vscode/*
