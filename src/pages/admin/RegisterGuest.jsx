@@ -42,13 +42,18 @@ export default function RegisterGuest() {
     }
 
     try {
-      // 1. Save guest to Supabase
+      // 1. Generate a unique survey token BEFORE saving
+      const surveyToken = crypto.randomUUID()
+      console.log('Generated survey token:', surveyToken)
+
+      // 2. Save guest to Supabase with the generated token
       const { data: guestData, error: insertError } = await supabase
         .from('guests')
         .insert([
           { 
             phone: phone,
             location_id: locationId,
+            survey_token: surveyToken,  // ✅ Include the token here
             sms_status: 'pending'
           }
         ])
@@ -60,13 +65,16 @@ export default function RegisterGuest() {
         if (insertError.code === '23505') {
           setError('This phone number is already registered.')
         } else {
+          console.error('Insert error:', insertError)
           throw insertError
         }
         setSubmitting(false)
         return
       }
 
-      // 2. Send survey via SMS using Edge Function
+      console.log('Guest created with token:', guestData.survey_token)
+
+      // 3. Send survey via SMS using Edge Function
       const { data: smsData, error: smsError } = await supabase.functions.invoke('send-survey', {
         body: { guestId: guestData.id },
         headers: {
@@ -78,6 +86,7 @@ export default function RegisterGuest() {
         console.error('SMS Error:', smsError)
         setError('Guest registered but survey SMS failed to send. Please try again.')
       } else {
+        console.log('SMS Response:', smsData)
         setSuccess('✅ Guest registered! Survey link sent via SMS.')
       }
 
