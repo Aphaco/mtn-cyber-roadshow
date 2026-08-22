@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+
 import { supabase } from '../../services/supabase'
 
 export default function Survey() {
@@ -85,7 +86,7 @@ export default function Survey() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-
+  
     try {
       // Call the secure RPC function
       const { data, error } = await supabase.rpc('submit_survey', {
@@ -97,18 +98,22 @@ export default function Survey() {
         p_key_takeaway: formData.keyTakeaway,
         p_comments: formData.comments
       })
-
+  
       if (error) {
         console.error('RPC error:', error)
         throw new Error(error.message)
       }
-
+  
       if (data && data.success === false) {
         throw new Error(data.error || 'Submission failed')
       }
-
+  
       console.log('✅ Survey submitted successfully:', data)
       setSubmitted(true)
+      
+      // ✅ Navigate to Thank You page
+      navigate('/thank-you')
+      
     } catch (error) {
       console.error('Survey submission error:', error)
       alert('Something went wrong: ' + error.message)

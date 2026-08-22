@@ -4,7 +4,7 @@ import Login from './pages/auth/Login'
 import Dashboard from './pages/admin/dashboard'
 import RegisterGuest from './pages/admin/RegisterGuest'
 import Survey from './pages/survey/survey'
-import Export from './pages/admin/Export'  // ✅ ADDED THIS LINE
+import Export from './pages/admin/Export'
 import ProtectedRoute from './routes/ProtectedRoute'
 
 function App() {
@@ -36,7 +36,6 @@ function App() {
           element={<RegisterGuest />}
         />
 
-        {/* ✅ ADDED: Export Route - Protected */}
         <Route
           path="/admin/export"
           element={<Export />}
