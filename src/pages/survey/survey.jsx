@@ -254,7 +254,7 @@ useEffect(() => {
           <p className="text-muted">Your feedback has been recorded. We appreciate your time!</p>
           <div className="mt-4 p-3 bg-white rounded-3 shadow-sm d-inline-block">
             <p className="mb-0 text-muted small">
-              📍 {guest?.locations?.name || 'Roadshow'} &nbsp;•&nbsp; 📱 {guest?.phone || ''}
+            📍 {guest?.location_name || 'Roadshow'} &nbsp;•&nbsp; 📱 {guest?.phone || ''}
             </p>
           </div>
         </div>
