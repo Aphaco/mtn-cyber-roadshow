@@ -3,7 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/admin/dashboard'
 import RegisterGuest from './pages/admin/RegisterGuest'
-import Survey from './pages/survey/survey'  // ADDED THIS LINE
+import Survey from './pages/survey/survey'
+import Export from './pages/admin/Export'  // ✅ ADDED THIS LINE
 import ProtectedRoute from './routes/ProtectedRoute'
 
 function App() {
@@ -16,7 +17,7 @@ function App() {
         element={<Login />}
       />
 
-      {/* ADDED: Survey Route - Public */}
+      {/* Survey Route - Public */}
       <Route
         path="/survey/:token"
         element={<Survey />}
@@ -33,6 +34,12 @@ function App() {
         <Route
           path="/admin/register"
           element={<RegisterGuest />}
+        />
+
+        {/* ✅ ADDED: Export Route - Protected */}
+        <Route
+          path="/admin/export"
+          element={<Export />}
         />
 
       </Route>

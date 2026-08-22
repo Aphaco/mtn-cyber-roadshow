@@ -5,28 +5,62 @@ import { supabase } from '../../services/supabase'
 export default function Dashboard() {
   const navigate = useNavigate()
   const [guestCount, setGuestCount] = useState(0)
+  const [smsSentCount, setSmsSentCount] = useState(0)
+  const [surveyedCount, setSurveyedCount] = useState(0)
+  const [pendingCount, setPendingCount] = useState(0)
   const [recentGuests, setRecentGuests] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Fetch stats - NEW but doesn't affect your existing logic
+  // Fetch stats
   useEffect(() => {
     const fetchStats = async () => {
       try {
         // Get total guests
-        const { count } = await supabase
+        const { count: totalGuests } = await supabase
           .from('guests')
           .select('*', { count: 'exact', head: true })
         
-        setGuestCount(count || 0)
+        setGuestCount(totalGuests || 0)
 
-        // Get recent guests
-        const { data } = await supabase
+        // Get SMS sent count
+        const { count: sent } = await supabase
           .from('guests')
-          .select('phone, location_id, created_at, sms_status, survey_completed, locations(name)')
+          .select('*', { count: 'exact', head: true })
+          .eq('sms_status', 'sent')
+        
+        setSmsSentCount(sent || 0)
+
+        // Get survey completed count from feedback table
+        const { count: surveyed } = await supabase
+          .from('feedback')
+          .select('*', { count: 'exact', head: true })
+        
+        setSurveyedCount(surveyed || 0)
+
+        // Get pending count (guests who haven't completed survey)
+        const { count: pending } = await supabase
+          .from('guests')
+          .select('*', { count: 'exact', head: true })
+          .eq('survey_completed', false)
+        
+        setPendingCount(pending || 0)
+
+        // Get recent guests with their survey status
+        const { data: recent } = await supabase
+          .from('guests')
+          .select(`
+            id,
+            phone,
+            location_id,
+            created_at,
+            sms_status,
+            survey_completed,
+            locations (name)
+          `)
           .order('created_at', { ascending: false })
           .limit(5)
 
-        setRecentGuests(data || [])
+        setRecentGuests(recent || [])
       } catch (error) {
         console.error('Error fetching stats:', error)
       } finally {
@@ -56,7 +90,6 @@ export default function Dashboard() {
           </span>
           <div className="ms-auto d-flex align-items-center gap-3">
             <span className="text-white-50 small">Admin</span>
-            {/* YOUR ORIGINAL Logout button - STYLED only */}
             <button 
               onClick={handleLogout}
               className="btn btn-outline-light btn-sm"
@@ -99,7 +132,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <h6 className="text-muted mb-0">SMS Sent</h6>
-                    <h3 className="fw-bold mb-0">{loading ? '...' : recentGuests.filter(g => g.sms_status === 'sent').length}</h3>
+                    <h3 className="fw-bold mb-0">{loading ? '...' : smsSentCount}</h3>
                   </div>
                 </div>
               </div>
@@ -117,7 +150,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <h6 className="text-muted mb-0">Surveyed</h6>
-                    <h3 className="fw-bold mb-0">{loading ? '...' : recentGuests.filter(g => g.survey_completed).length}</h3>
+                    <h3 className="fw-bold mb-0">{loading ? '...' : surveyedCount}</h3>
                   </div>
                 </div>
               </div>
@@ -135,7 +168,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <h6 className="text-muted mb-0">Pending</h6>
-                    <h3 className="fw-bold mb-0">{loading ? '...' : recentGuests.filter(g => !g.survey_completed).length}</h3>
+                    <h3 className="fw-bold mb-0">{loading ? '...' : pendingCount}</h3>
                   </div>
                 </div>
               </div>
@@ -145,14 +178,13 @@ export default function Dashboard() {
 
         {/* Quick Actions */}
         <div className="row g-3 mb-4">
-          <div className="col-md-12">
+          <div className="col-md-6">
             <div className="card border-0 shadow-sm">
               <div className="card-body d-flex align-items-center justify-content-between">
                 <div>
                   <h5 className="fw-bold mb-1">Register New Guest</h5>
                   <p className="text-muted small mb-0">Add a guest and send survey link via SMS</p>
                 </div>
-                {/* YOUR ORIGINAL Register Guest button - STYLED only */}
                 <button 
                   onClick={() => navigate('/admin/register')}
                   className="btn btn-primary rounded-3 px-4"
@@ -162,6 +194,26 @@ export default function Dashboard() {
                     <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
                   </svg>
                   Register Guest
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-md-6">
+            <div className="card border-0 shadow-sm">
+              <div className="card-body d-flex align-items-center justify-content-between">
+                <div>
+                  <h5 className="fw-bold mb-1">Export Responses</h5>
+                  <p className="text-muted small mb-0">Download all survey responses as Excel or CSV</p>
+                </div>
+                <button 
+                  onClick={() => navigate('/admin/export')}
+                  className="btn btn-success rounded-3 px-4"
+                >
+                  <svg className="me-1" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                  </svg>
+                  Export
                 </button>
               </div>
             </div>

@@ -19,159 +19,70 @@ export default function Survey() {
     comments: ''
   })
 
-  // Fetch guest data
-  // useEffect(() => {
-  //   const fetchGuest = async () => {
-  //     try {
-  //       console.log('Fetching guest with token:', token)
-        
-  //       // Try to find by survey_token first
-  //       let { data, error } = await supabase
-  //         .from('guests')
-  //         .select(`
-  //           id,
-  //           phone,
-  //           name,
-  //           survey_token,
-  //           survey_completed,
-  //           location_id,
-  //           locations (name)
-  //         `)
-  //         .eq('survey_token', token)
-  //         .maybeSingle()
-        
-  //       // If not found by survey_token, try by id (fallback)
-  //       if (!data && !error) {
-  //         console.log('Not found by survey_token, trying by id...')
-  //         const { data: idData, error: idError } = await supabase
-  //           .from('guests')
-  //           .select(`
-  //             id,
-  //             phone,
-  //             name,
-  //             survey_token,
-  //             survey_completed,
-  //             location_id,
-  //             locations (name)
-  //           `)
-  //           .eq('id', token)
-  //           .maybeSingle()
-          
-  //         data = idData
-  //         error = idError
-  //       }
-        
-  //       if (error) {
-  //         console.error('Error fetching guest:', error)
-  //         setError('Database error: ' + error.message)
-  //         setLoading(false)
-  //         return
-  //       }
-        
-  //       if (!data) {
-  //         console.log('No guest found for token:', token)
-  //         setError('Guest not found. Please check your survey link.')
-  //         setLoading(false)
-  //         return
-  //       }
-        
-  //       console.log('Guest found:', data)
-  //       setGuest(data)
-        
-  //       // If already completed, show thank you
-  //       if (data.survey_completed) {
-  //         setSubmitted(true)
-  //       }
-        
-  //     } catch (error) {
-  //       console.error('Unexpected error:', error)
-  //       setError('An unexpected error occurred.')
-  //     } finally {
-  //       setLoading(false)
-  //     }
-  //   }
-    
-  //   if (token) {
-  //     fetchGuest()
-  //   } else {
-  //     setError('No survey token provided.')
-  //     setLoading(false)
-  //   }
-  // }, [token])
-  // Fetch guest data
-useEffect(() => {
-  const fetchGuest = async () => {
-    try {
-      console.log('Fetching guest with token:', token)
+  // Fetch guest data using secure RPC function
+  useEffect(() => {
+    const fetchGuest = async () => {
+      try {
+        console.log('🔍 Fetching guest with token:', token)
 
-      if (!token) {
-        setError('No survey token provided.')
-        setLoading(false)
-        return
-      }
-
-      const { data, error } = await supabase.rpc(
-        'get_guest_for_survey',
-        {
-          p_token: token,
+        if (!token) {
+          setError('No survey token provided.')
+          setLoading(false)
+          return
         }
-      )
 
-      if (error) {
-        console.error('Error fetching guest:', error)
-
-        setError(
-          'Database error: ' + error.message
+        // Call the secure RPC function
+        const { data, error } = await supabase.rpc(
+          'get_guest_for_survey',
+          {
+            p_token: token,
+          }
         )
 
+        if (error) {
+          console.error('❌ RPC error:', error)
+          setError('Database error: ' + error.message)
+          setLoading(false)
+          return
+        }
+
+        console.log('✅ RPC response:', data)
+
+        // RPC returns an array
+        const guestData = data?.[0]
+
+        if (!guestData) {
+          console.log('❌ No guest found for token:', token)
+          setError('Guest not found. Please check your survey link.')
+          setLoading(false)
+          return
+        }
+
+        console.log('✅ Guest found:', guestData)
+
+        // Map the response to match what the component expects
+        setGuest({
+          id: guestData.id,
+          name: guestData.name,
+          location_name: guestData.location_name,
+          survey_completed: guestData.survey_completed
+        })
+
+        // If already completed, show thank you
+        if (guestData.survey_completed) {
+          setSubmitted(true)
+        }
+
+      } catch (error) {
+        console.error('❌ Unexpected error:', error)
+        setError('An unexpected error occurred.')
+      } finally {
         setLoading(false)
-        return
       }
-
-      console.log('RPC response:', data)
-
-      // RPC returns an array
-      const guestData = data?.[0]
-
-      if (!guestData) {
-        console.log(
-          'No guest found for token:',
-          token
-        )
-
-        setError(
-          'Guest not found. Please check your survey link.'
-        )
-
-        setLoading(false)
-        return
-      }
-
-      console.log('Guest found:', guestData)
-
-      setGuest(guestData)
-
-      // If already completed, show thank you
-      if (guestData.survey_completed) {
-        setSubmitted(true)
-      }
-
-    } catch (error) {
-      console.error(
-        'Unexpected error:',
-        error
-      )
-
-      setError(
-        'An unexpected error occurred.'
-      )
-    } finally {
-      setLoading(false)
     }
-  }
 
-  fetchGuest()
-}, [token])
+    fetchGuest()
+  }, [token])
 
   const handleChange = (e) => {
     setFormData({
@@ -183,24 +94,49 @@ useEffect(() => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-
+  
     try {
-      const { error } = await supabase
+      // 1. Get the guest ID and details
+      const { data: guestData, error: guestError } = await supabase
+        .from('guests')
+        .select('id, phone, location_id, locations(name)')
+        .eq('survey_token', token)
+        .single()
+  
+      if (guestError || !guestData) {
+        throw new Error('Guest not found')
+      }
+  
+      // 2. Save to feedback table
+      const { error: feedbackError } = await supabase
+        .from('feedback')
+        .insert([
+          {
+            guest_id: guestData.id,
+            guest_name: formData.name,
+            phone: guestData.phone,
+            location_name: guestData.locations?.name || 'Unknown',
+            rating: formData.rating,
+            engagement: formData.engagement,
+            favorite_activity: formData.favoriteActivity,
+            key_takeaway: formData.keyTakeaway,
+            comments: formData.comments
+          }
+        ])
+  
+      if (feedbackError) throw feedbackError
+  
+      // 3. ✅ IMPORTANT: Update guests table to mark survey as completed
+      const { error: updateError } = await supabase
         .from('guests')
         .update({
           name: formData.name,
-          survey_completed: true,
-          survey_answers: {
-            rating: formData.rating,
-            engagement: formData.engagement,
-            favoriteActivity: formData.favoriteActivity,
-            keyTakeaway: formData.keyTakeaway,
-            comments: formData.comments
-          }
+          survey_completed: true
         })
         .eq('survey_token', token)
-
-      if (error) throw error
+  
+      if (updateError) throw updateError
+  
       setSubmitted(true)
     } catch (error) {
       console.error('Survey submission error:', error)
@@ -254,7 +190,7 @@ useEffect(() => {
           <p className="text-muted">Your feedback has been recorded. We appreciate your time!</p>
           <div className="mt-4 p-3 bg-white rounded-3 shadow-sm d-inline-block">
             <p className="mb-0 text-muted small">
-            📍 {guest?.location_name || 'Roadshow'} &nbsp;•&nbsp; 📱 {guest?.phone || ''}
+              📍 {guest?.location_name || 'Roadshow'}
             </p>
           </div>
         </div>
@@ -273,7 +209,7 @@ useEffect(() => {
               <h1 className="h2 fw-bold">MTN Cyber Roadshow</h1>
               <p className="text-muted">Thank you for attending! Please share your feedback.</p>
               <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
-                📍 {guest?.locations?.name || 'Roadshow'}
+                📍 {guest?.location_name || 'Roadshow'}
               </span>
             </div>
 
