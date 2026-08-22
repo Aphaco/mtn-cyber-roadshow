@@ -20,84 +20,158 @@ export default function Survey() {
   })
 
   // Fetch guest data
-  useEffect(() => {
-    const fetchGuest = async () => {
-      try {
-        console.log('Fetching guest with token:', token)
+  // useEffect(() => {
+  //   const fetchGuest = async () => {
+  //     try {
+  //       console.log('Fetching guest with token:', token)
         
-        // Try to find by survey_token first
-        let { data, error } = await supabase
-          .from('guests')
-          .select(`
-            id,
-            phone,
-            name,
-            survey_token,
-            survey_completed,
-            location_id,
-            locations (name)
-          `)
-          .eq('survey_token', token)
-          .maybeSingle()
+  //       // Try to find by survey_token first
+  //       let { data, error } = await supabase
+  //         .from('guests')
+  //         .select(`
+  //           id,
+  //           phone,
+  //           name,
+  //           survey_token,
+  //           survey_completed,
+  //           location_id,
+  //           locations (name)
+  //         `)
+  //         .eq('survey_token', token)
+  //         .maybeSingle()
         
-        // If not found by survey_token, try by id (fallback)
-        if (!data && !error) {
-          console.log('Not found by survey_token, trying by id...')
-          const { data: idData, error: idError } = await supabase
-            .from('guests')
-            .select(`
-              id,
-              phone,
-              name,
-              survey_token,
-              survey_completed,
-              location_id,
-              locations (name)
-            `)
-            .eq('id', token)
-            .maybeSingle()
+  //       // If not found by survey_token, try by id (fallback)
+  //       if (!data && !error) {
+  //         console.log('Not found by survey_token, trying by id...')
+  //         const { data: idData, error: idError } = await supabase
+  //           .from('guests')
+  //           .select(`
+  //             id,
+  //             phone,
+  //             name,
+  //             survey_token,
+  //             survey_completed,
+  //             location_id,
+  //             locations (name)
+  //           `)
+  //           .eq('id', token)
+  //           .maybeSingle()
           
-          data = idData
-          error = idError
-        }
+  //         data = idData
+  //         error = idError
+  //       }
         
-        if (error) {
-          console.error('Error fetching guest:', error)
-          setError('Database error: ' + error.message)
-          setLoading(false)
-          return
-        }
+  //       if (error) {
+  //         console.error('Error fetching guest:', error)
+  //         setError('Database error: ' + error.message)
+  //         setLoading(false)
+  //         return
+  //       }
         
-        if (!data) {
-          console.log('No guest found for token:', token)
-          setError('Guest not found. Please check your survey link.')
-          setLoading(false)
-          return
-        }
+  //       if (!data) {
+  //         console.log('No guest found for token:', token)
+  //         setError('Guest not found. Please check your survey link.')
+  //         setLoading(false)
+  //         return
+  //       }
         
-        console.log('Guest found:', data)
-        setGuest(data)
+  //       console.log('Guest found:', data)
+  //       setGuest(data)
         
-        // If already completed, show thank you
-        if (data.survey_completed) {
-          setSubmitted(true)
-        }
+  //       // If already completed, show thank you
+  //       if (data.survey_completed) {
+  //         setSubmitted(true)
+  //       }
         
-      } catch (error) {
-        console.error('Unexpected error:', error)
-        setError('An unexpected error occurred.')
-      } finally {
-        setLoading(false)
-      }
-    }
+  //     } catch (error) {
+  //       console.error('Unexpected error:', error)
+  //       setError('An unexpected error occurred.')
+  //     } finally {
+  //       setLoading(false)
+  //     }
+  //   }
     
-    if (token) {
-      fetchGuest()
-    } else {
-      setError('No survey token provided.')
+  //   if (token) {
+  //     fetchGuest()
+  //   } else {
+  //     setError('No survey token provided.')
+  //     setLoading(false)
+  //   }
+  // }, [token])
+  // Fetch guest data
+useEffect(() => {
+  const fetchGuest = async () => {
+    try {
+      console.log('Fetching guest with token:', token)
+
+      if (!token) {
+        setError('No survey token provided.')
+        setLoading(false)
+        return
+      }
+
+      const { data, error } = await supabase.rpc(
+        'get_guest_for_survey',
+        {
+          p_token: token,
+        }
+      )
+
+      if (error) {
+        console.error('Error fetching guest:', error)
+
+        setError(
+          'Database error: ' + error.message
+        )
+
+        setLoading(false)
+        return
+      }
+
+      console.log('RPC response:', data)
+
+      // RPC returns an array
+      const guestData = data?.[0]
+
+      if (!guestData) {
+        console.log(
+          'No guest found for token:',
+          token
+        )
+
+        setError(
+          'Guest not found. Please check your survey link.'
+        )
+
+        setLoading(false)
+        return
+      }
+
+      console.log('Guest found:', guestData)
+
+      setGuest(guestData)
+
+      // If already completed, show thank you
+      if (guestData.survey_completed) {
+        setSubmitted(true)
+      }
+
+    } catch (error) {
+      console.error(
+        'Unexpected error:',
+        error
+      )
+
+      setError(
+        'An unexpected error occurred.'
+      )
+    } finally {
       setLoading(false)
     }
-  }, [token])
+  }
+
+  fetchGuest()
+}, [token])
 
   const handleChange = (e) => {
     setFormData({
