@@ -15,38 +15,49 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        console.log('📊 Fetching dashboard stats...')
+
         // Get total guests
-        const { count: totalGuests } = await supabase
+        const { count: totalGuests, error: totalError } = await supabase
           .from('guests')
           .select('*', { count: 'exact', head: true })
         
+        if (totalError) console.error('Total guests error:', totalError)
         setGuestCount(totalGuests || 0)
+        console.log('Total guests:', totalGuests)
 
         // Get SMS sent count
-        const { count: sent } = await supabase
+        const { count: sent, error: sentError } = await supabase
           .from('guests')
           .select('*', { count: 'exact', head: true })
           .eq('sms_status', 'sent')
         
+        if (sentError) console.error('SMS sent error:', sentError)
         setSmsSentCount(sent || 0)
+        console.log('SMS sent:', sent)
 
         // Get survey completed count from feedback table
-        const { count: surveyed } = await supabase
+        const { count: surveyed, error: surveyedError } = await supabase
           .from('feedback')
           .select('*', { count: 'exact', head: true })
         
+        if (surveyedError) console.error('Surveyed error:', surveyedError)
         setSurveyedCount(surveyed || 0)
+        console.log('Surveyed:', surveyed)
 
-        // Get pending count (guests who haven't completed survey)
-        const { count: pending } = await supabase
+        // Get pending count
+        const { count: pending, error: pendingError } = await supabase
           .from('guests')
           .select('*', { count: 'exact', head: true })
           .eq('survey_completed', false)
         
+        if (pendingError) console.error('Pending error:', pendingError)
         setPendingCount(pending || 0)
+        console.log('Pending:', pending)
 
-        // Get recent guests with their survey status
-        const { data: recent } = await supabase
+        // ✅ FIXED: Get recent guests with proper error handling
+        console.log('🔍 Fetching recent guests...')
+        const { data: recent, error: recentError } = await supabase
           .from('guests')
           .select(`
             id,
@@ -58,11 +69,17 @@ export default function Dashboard() {
             locations (name)
           `)
           .order('created_at', { ascending: false })
-          .limit(5)
+          .limit(10)
 
-        setRecentGuests(recent || [])
+        if (recentError) {
+          console.error('❌ Recent guests error:', recentError)
+        } else {
+          console.log('✅ Recent guests found:', recent?.length || 0)
+          setRecentGuests(recent || [])
+        }
+
       } catch (error) {
-        console.error('Error fetching stats:', error)
+        console.error('❌ Error fetching stats:', error)
       } finally {
         setLoading(false)
       }
@@ -235,6 +252,7 @@ export default function Dashboard() {
             ) : recentGuests.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-muted mb-0">No guests registered yet</p>
+                <p className="text-muted small">Register a guest to see them here</p>
               </div>
             ) : (
               <div className="table-responsive">
@@ -250,11 +268,11 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {recentGuests.map((guest, index) => (
-                      <tr key={index}>
+                      <tr key={guest.id || index}>
                         <td className="fw-medium">{guest.phone}</td>
                         <td>{guest.locations?.name || 'N/A'}</td>
                         <td className="text-muted small">
-                          {new Date(guest.created_at).toLocaleDateString()}
+                          {guest.created_at ? new Date(guest.created_at).toLocaleDateString() : 'N/A'}
                         </td>
                         <td>
                           {guest.sms_status === 'sent' ? (
