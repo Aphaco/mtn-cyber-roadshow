@@ -31,7 +31,6 @@ export default function Survey() {
           return
         }
 
-        // Call the secure RPC function
         const { data, error } = await supabase.rpc(
           'get_guest_for_survey',
           {
@@ -48,7 +47,6 @@ export default function Survey() {
 
         console.log('✅ RPC response:', data)
 
-        // RPC returns an array
         const guestData = data?.[0]
 
         if (!guestData) {
@@ -59,16 +57,8 @@ export default function Survey() {
         }
 
         console.log('✅ Guest found:', guestData)
+        setGuest(guestData)
 
-        // Map the response to match what the component expects
-        setGuest({
-          id: guestData.id,
-          name: guestData.name,
-          location_name: guestData.location_name,
-          survey_completed: guestData.survey_completed
-        })
-
-        // If already completed, show thank you
         if (guestData.survey_completed) {
           setSubmitted(true)
         }
@@ -91,56 +81,37 @@ export default function Survey() {
     })
   }
 
+  // ✅ UPDATED: Use RPC function for submission
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-  
+
     try {
-      // 1. Get the guest ID and details
-      const { data: guestData, error: guestError } = await supabase
-        .from('guests')
-        .select('id, phone, location_id, locations(name)')
-        .eq('survey_token', token)
-        .single()
-  
-      if (guestError || !guestData) {
-        throw new Error('Guest not found')
+      // Call the secure RPC function
+      const { data, error } = await supabase.rpc('submit_survey', {
+        p_token: token,
+        p_name: formData.name,
+        p_rating: formData.rating,
+        p_engagement: formData.engagement,
+        p_favorite_activity: formData.favoriteActivity,
+        p_key_takeaway: formData.keyTakeaway,
+        p_comments: formData.comments
+      })
+
+      if (error) {
+        console.error('RPC error:', error)
+        throw new Error(error.message)
       }
-  
-      // 2. Save to feedback table
-      const { error: feedbackError } = await supabase
-        .from('feedback')
-        .insert([
-          {
-            guest_id: guestData.id,
-            guest_name: formData.name,
-            phone: guestData.phone,
-            location_name: guestData.locations?.name || 'Unknown',
-            rating: formData.rating,
-            engagement: formData.engagement,
-            favorite_activity: formData.favoriteActivity,
-            key_takeaway: formData.keyTakeaway,
-            comments: formData.comments
-          }
-        ])
-  
-      if (feedbackError) throw feedbackError
-  
-      // 3. ✅ IMPORTANT: Update guests table to mark survey as completed
-      const { error: updateError } = await supabase
-        .from('guests')
-        .update({
-          name: formData.name,
-          survey_completed: true
-        })
-        .eq('survey_token', token)
-  
-      if (updateError) throw updateError
-  
+
+      if (data && data.success === false) {
+        throw new Error(data.error || 'Submission failed')
+      }
+
+      console.log('✅ Survey submitted successfully:', data)
       setSubmitted(true)
     } catch (error) {
       console.error('Survey submission error:', error)
-      alert('Something went wrong. Please try again.')
+      alert('Something went wrong: ' + error.message)
     } finally {
       setSubmitting(false)
     }
