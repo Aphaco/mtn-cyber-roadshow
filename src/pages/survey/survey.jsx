@@ -109,9 +109,8 @@ export default function Survey() {
       }
   
       console.log('✅ Survey submitted successfully:', data)
-      setSubmitted(true)
       
-      // ✅ Navigate to Thank You page
+      // ✅ Navigate to Thank You page immediately
       navigate('/thank-you')
       
     } catch (error) {
@@ -121,7 +120,6 @@ export default function Survey() {
       setSubmitting(false)
     }
   }
-
   // Loading state
   if (loading) {
     return (
