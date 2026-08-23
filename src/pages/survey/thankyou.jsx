@@ -14,7 +14,7 @@ export default function ThankYou() {
         if (prev <= 1) {
           clearInterval(timer)
           // Redirect to a safe public page (not admin!)
-          window.location.href = '/'
+         window.location.href = '/home'
           return 0
         }
         return prev - 1

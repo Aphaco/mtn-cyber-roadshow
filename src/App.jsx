@@ -5,56 +5,28 @@ import Dashboard from './pages/admin/dashboard'
 import RegisterGuest from './pages/admin/RegisterGuest'
 import Survey from './pages/survey/survey'
 import Export from './pages/admin/Export'
-import ThankYou from './pages/survey/ThankYou' 
+import ThankYou from './pages/survey/ThankYou'
 import ProtectedRoute from './routes/ProtectedRoute'
 
 function App() {
   return (
     <Routes>
+    
+      <Route path="/login" element={<Login />} />
+      <Route path="/survey/:token" element={<Survey />} />
+      <Route path="/thank-you" element={<ThankYou />} />
 
-      {/* Public */}
-      <Route
-        path="/login"
-        element={<Login />}
-      />
+     
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
-      {/* Survey Route - Public */}
-      <Route
-        path="/survey/:token"
-        element={<Survey />}
-      />
-
-      {/* ✅ ADDED: Thank You Route - Public */}
-      <Route
-        path="/thank-you"
-        element={<ThankYou />}
-      />
-
-      {/* Protected Admin Area */}
       <Route element={<ProtectedRoute />}>
-
-        <Route
-          path="/admin"
-          element={<Dashboard />}
-        />
-
-        <Route
-          path="/admin/register"
-          element={<RegisterGuest />}
-        />
-
-        <Route
-          path="/admin/export"
-          element={<Export />}
-        />
-
+        <Route path="/admin" element={<Dashboard />} />
+        <Route path="/admin/register" element={<RegisterGuest />} />
+        <Route path="/admin/export" element={<Export />} />
       </Route>
 
-      {/* Default */}
-      <Route
-        path="*"
-        element={<Navigate to="/login" replace />}
-      />
+    
+      <Route path="*" element={<Navigate to="/login" replace />} />
 
     </Routes>
   )
