@@ -5,6 +5,7 @@ import Dashboard from './pages/admin/dashboard'
 import RegisterGuest from './pages/admin/RegisterGuest'
 import Survey from './pages/survey/survey'
 import Export from './pages/admin/Export'
+import ThankYou from './pages/survey/ThankYou' 
 import ProtectedRoute from './routes/ProtectedRoute'
 
 function App() {
@@ -21,6 +22,12 @@ function App() {
       <Route
         path="/survey/:token"
         element={<Survey />}
+      />
+
+      {/* ✅ ADDED: Thank You Route - Public */}
+      <Route
+        path="/thank-you"
+        element={<ThankYou />}
       />
 
       {/* Protected Admin Area */}
