@@ -9,7 +9,6 @@ export default function Survey() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [guest, setGuest] = useState(null)
-  const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -60,9 +59,7 @@ export default function Survey() {
         console.log('✅ Guest found:', guestData)
         setGuest(guestData)
 
-        if (guestData.survey_completed) {
-          setSubmitted(true)
-        }
+        // ✅ REMOVED: Don't set submitted here - let the form handle it
 
       } catch (error) {
         console.error('❌ Unexpected error:', error)
@@ -82,11 +79,11 @@ export default function Survey() {
     })
   }
 
-  // ✅ UPDATED: Use RPC function for submission
+  // ✅ UPDATED: Submit and navigate to Thank You
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-  
+
     try {
       // Call the secure RPC function
       const { data, error } = await supabase.rpc('submit_survey', {
@@ -98,21 +95,21 @@ export default function Survey() {
         p_key_takeaway: formData.keyTakeaway,
         p_comments: formData.comments
       })
-  
+
       if (error) {
         console.error('RPC error:', error)
         throw new Error(error.message)
       }
-  
+
       if (data && data.success === false) {
         throw new Error(data.error || 'Submission failed')
       }
-  
+
       console.log('✅ Survey submitted successfully:', data)
-      
+
       // ✅ Navigate to Thank You page immediately
       navigate('/thank-you')
-      
+
     } catch (error) {
       console.error('Survey submission error:', error)
       alert('Something went wrong: ' + error.message)
@@ -120,6 +117,7 @@ export default function Survey() {
       setSubmitting(false)
     }
   }
+
   // Loading state
   if (loading) {
     return (
@@ -149,24 +147,6 @@ export default function Survey() {
           >
             Go back
           </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Already submitted
-  if (submitted) {
-    return (
-      <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' }}>
-        <div className="text-center">
-          <div className="display-1 mb-3">✅</div>
-          <h1 className="h3 fw-bold">Thank You!</h1>
-          <p className="text-muted">Your feedback has been recorded. We appreciate your time!</p>
-          <div className="mt-4 p-3 bg-white rounded-3 shadow-sm d-inline-block">
-            <p className="mb-0 text-muted small">
-              📍 {guest?.location_name || 'Roadshow'}
-            </p>
-          </div>
         </div>
       </div>
     )
