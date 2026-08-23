@@ -14,7 +14,7 @@ function App() {
     
       <Route path="/login" element={<Login />} />
       <Route path="/survey/:token" element={<Survey />} />
-      <Route path="/thank-you" element={<ThankYou />} />
+      <Route path="/home" element={<ThankYou />} />
 
      
       <Route path="/" element={<Navigate to="/login" replace />} />

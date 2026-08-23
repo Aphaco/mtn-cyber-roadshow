@@ -1,27 +1,11 @@
 import { useEffect, useState } from 'react'
 
 export default function ThankYou() {
-  const [countdown, setCountdown] = useState(8)
   const [showConfetti, setShowConfetti] = useState(false)
 
   useEffect(() => {
     // Start confetti after 1 second
     setTimeout(() => setShowConfetti(true), 500)
-
-    // Countdown to redirect
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          // Redirect to a safe public page (not admin!)
-         window.location.href = '/home'
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
   }, [])
 
   return (
@@ -91,10 +75,6 @@ export default function ThankYou() {
         @keyframes glowPulse {
           0%, 100% { box-shadow: 0 0 20px rgba(40, 167, 69, 0.3); }
           50% { box-shadow: 0 0 60px rgba(40, 167, 69, 0.6); }
-        }
-        @keyframes shimmerText {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
         }
       `}</style>
 
@@ -221,41 +201,9 @@ export default function ThankYou() {
                   </div>
                 </div>
 
-                {/* Auto-redirect Countdown - No buttons! */}
+                {/* ✅ No redirect, no countdown, just a simple message */}
                 <div className="mt-3">
-                  <small className="text-muted" style={{ fontSize: '13px' }}>
-                    <span style={{ opacity: 0.6 }}>You will be redirected in </span>
-                    <strong style={{ 
-                      color: '#667eea', 
-                      fontSize: '18px',
-                      display: 'inline-block',
-                      minWidth: '24px'
-                    }}>
-                      {countdown}
-                    </strong>
-                    <span style={{ opacity: 0.6 }}> seconds...</span>
-                  </small>
-                  <div className="mt-2" style={{
-                    width: '120px',
-                    height: '3px',
-                    background: '#e2e8f0',
-                    borderRadius: '10px',
-                    margin: '0 auto',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      width: `${(countdown / 8) * 100}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, #667eea, #764ba2)',
-                      borderRadius: '10px',
-                      transition: 'width 0.5s ease'
-                    }}></div>
-                  </div>
-                </div>
-
-                {/* Subtle note - no navigation links! */}
-                <div className="mt-4">
-                  <small style={{ color: 'rgba(0,0,0,0.2)', fontSize: '11px' }}>
+                  <small style={{ color: 'rgba(0,0,0,0.3)', fontSize: '12px' }}>
                     ✦ You're all set ✦
                   </small>
                 </div>
