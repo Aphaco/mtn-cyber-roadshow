@@ -327,7 +327,7 @@ export default function Survey() {
                   <div className="mb-4">
 
                     <label className="form-label fw-semibold">
-                      How would you rateeee the roadshow?{' '}
+                      How would you rate the roadshow?{' '}
                       <span className="text-danger">
                         *
                       </span>
