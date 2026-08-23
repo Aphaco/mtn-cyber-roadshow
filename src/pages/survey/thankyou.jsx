@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 
 export default function ThankYou() {
+  const { token } = useParams()
+
   const [showConfetti, setShowConfetti] = useState(false)
 
   useEffect(() => {
-    // Start confetti after 1 second
-    setTimeout(() => setShowConfetti(true), 500)
+    const timer = setTimeout(() => {
+      setShowConfetti(true)
+    }, 500)
+
+    return () => clearTimeout(timer)
   }, [])
+
 
   return (
     <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{
@@ -222,3 +229,5 @@ export default function ThankYou() {
     </div>
   )
 }
+
+
