@@ -38,7 +38,7 @@ export default function RegisterGuest() {
     // Validate phone (Ghana format)
     const phoneRegex = /^0[0-9]{9}$/
     if (!phoneRegex.test(phone)) {
-      setError('Please enter a valid Ghana phone number (e.g., 0241234567)')
+      setError('Please enter a valid Ghana phone number (e.g., 024......9)')
       setSubmitting(false)
       return
     }

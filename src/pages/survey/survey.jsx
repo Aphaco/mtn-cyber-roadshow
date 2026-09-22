@@ -20,9 +20,7 @@ export default function Survey() {
     comments: ''
   })
 
-  // ==========================================
-  // FETCH GUEST
-  // ==========================================
+
 
   useEffect(() => {
     const fetchGuest = async () => {

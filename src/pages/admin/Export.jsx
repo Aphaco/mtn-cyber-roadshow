@@ -10,7 +10,8 @@ import {
   FiMapPin, 
   FiStar, 
   FiTrendingUp,
-  FiArrowLeft
+  FiArrowLeft,
+  FiX
 } from 'react-icons/fi'
 
 export default function Export() {
@@ -23,6 +24,13 @@ export default function Export() {
     avgEngagement: 0,
     topLocation: 'N/A'
   })
+
+  // ✅ Region selection modal state
+  const [modalOpen, setModalOpen] = useState(false)
+  const [exportType, setExportType] = useState(null) // 'excel' | 'csv'
+  const [allRegions, setAllRegions] = useState(true)
+  const [selectedRegions, setSelectedRegions] = useState([])
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     fetchFeedback()
@@ -37,12 +45,10 @@ export default function Export() {
     if (!error && data) {
       setFeedback(data)
       
-      // Calculate stats
       const total = data.length
       const avgRating = total > 0 ? data.reduce((sum, item) => sum + (item.rating || 0), 0) / total : 0
       const avgEngagement = total > 0 ? data.reduce((sum, item) => sum + (item.engagement || 0), 0) / total : 0
       
-      // Find top location
       const locationCounts = {}
       data.forEach(item => {
         const loc = item.location_name || 'Unknown'
@@ -67,8 +73,50 @@ export default function Export() {
     setLoading(false)
   }
 
-  const exportToExcel = () => {
-    const exportData = feedback.map(item => ({
+  // ✅ Derive region list from data (so it always matches what's actually in the DB)
+  const availableRegions = Array.from(
+    new Set(feedback.map(item => item.location_name).filter(Boolean))
+  ).sort()
+
+  // ---- Modal controls ----
+  const openExportModal = (type) => {
+    setExportType(type)
+    setAllRegions(true)
+    setSelectedRegions([])
+    setModalOpen(true)
+  }
+
+  const closeModal = () => {
+    if (exporting) return
+    setModalOpen(false)
+  }
+
+  const toggleRegion = (region) => {
+    setSelectedRegions(prev =>
+      prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]
+    )
+  }
+
+  const handleAllToggle = () => {
+    const next = !allRegions
+    setAllRegions(next)
+    if (next) setSelectedRegions([])
+  }
+
+  // ---- Shared export logic ----
+  const getFilteredData = () => {
+    if (allRegions) return feedback
+    return feedback.filter(item => selectedRegions.includes(item.location_name))
+  }
+
+  const getRegionLabel = () => {
+    if (allRegions) return 'All_Regions'
+    if (selectedRegions.length === 0) return null
+    return selectedRegions.join('_').replace(/\s+/g, '_')
+  }
+
+  const buildExportRows = (data) =>
+    data.map(item => ({
       'Guest Name': item.guest_name || 'Anonymous',
       'Phone': item.phone || 'N/A',
       'Location': item.location_name || 'Unknown',
@@ -80,39 +128,72 @@ export default function Export() {
       'Submitted At': new Date(item.submitted_at).toLocaleString()
     }))
 
-    const ws = XLSX.utils.json_to_sheet(exportData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Survey Responses')
-    XLSX.writeFile(wb, `Survey_Responses_${new Date().toISOString().split('T')[0]}.xlsx`)
+  const runExport = () => {
+    const label = getRegionLabel()
+    if (!label) {
+      alert('Please select at least one region.')
+      return
+    }
+
+    const data = getFilteredData()
+    if (data.length === 0) {
+      alert('No survey responses found for the selected region(s).')
+      return
+    }
+
+    setExporting(true)
+    try {
+      const dateStr = new Date().toISOString().split('T')[0]
+      const baseName = `Survey_Responses_${label}_${dateStr}`
+      const exportData = buildExportRows(data)
+
+      if (exportType === 'excel') {
+        const ws = XLSX.utils.json_to_sheet(exportData)
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, 'Survey Responses')
+        XLSX.writeFile(wb, `${baseName}.xlsx`)
+      } else {
+        const headers = ['Guest Name', 'Phone', 'Location', 'Rating', 'Engagement', 'Favorite Activity', 'Key Takeaway', 'Comments', 'Submitted At']
+        const rows = data.map(item => [
+          item.guest_name || 'Anonymous',
+          item.phone || 'N/A',
+          item.location_name || 'Unknown',
+          item.rating || 'N/A',
+          item.engagement || 'N/A',
+          item.favorite_activity || 'N/A',
+          item.key_takeaway || 'N/A',
+          item.comments || 'N/A',
+          new Date(item.submitted_at).toLocaleString()
+        ])
+
+        // Wrap each cell in quotes so commas in comments don't break the CSV
+        const escapeCell = (val) => `"${String(val).replace(/"/g, '""')}"`
+        let csv = headers.map(escapeCell).join(',') + '\n'
+        rows.forEach(row => {
+          csv += row.map(escapeCell).join(',') + '\n'
+        })
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${baseName}.csv`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      }
+
+      setModalOpen(false)
+    } catch (err) {
+      console.error('Export error:', err)
+      alert('Export failed: ' + err.message)
+    } finally {
+      setExporting(false)
+    }
   }
 
-  const exportToCSV = () => {
-    const headers = ['Guest Name', 'Phone', 'Location', 'Rating', 'Engagement', 'Favorite Activity', 'Key Takeaway', 'Comments', 'Submitted At']
-    const rows = feedback.map(item => [
-      item.guest_name || 'Anonymous',
-      item.phone || 'N/A',
-      item.location_name || 'Unknown',
-      item.rating || 'N/A',
-      item.engagement || 'N/A',
-      item.favorite_activity || 'N/A',
-      item.key_takeaway || 'N/A',
-      item.comments || 'N/A',
-      new Date(item.submitted_at).toLocaleString()
-    ])
-
-    let csv = headers.join(',') + '\n'
-    rows.forEach(row => {
-      csv += row.join(',') + '\n'
-    })
-
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `Survey_Responses_${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-  }
+  const previewCount = allRegions
+    ? feedback.length
+    : feedback.filter(i => selectedRegions.includes(i.location_name)).length
 
   return (
     <div className="p-4">
@@ -138,7 +219,7 @@ export default function Export() {
         </div>
         <div className="d-flex gap-2 mt-2 mt-sm-0">
           <button 
-            onClick={exportToExcel}
+            onClick={() => openExportModal('excel')}
             className="btn btn-success rounded-3 px-4 d-flex align-items-center gap-2"
             disabled={feedback.length === 0}
             style={{ background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', border: 'none' }}
@@ -147,7 +228,7 @@ export default function Export() {
             <span>Export Excel</span>
           </button>
           <button 
-            onClick={exportToCSV}
+            onClick={() => openExportModal('csv')}
             className="btn btn-secondary rounded-3 px-4 d-flex align-items-center gap-2"
             disabled={feedback.length === 0}
             style={{ background: 'linear-gradient(135deg, #6c757d 0%, #495057 100%)', border: 'none' }}
@@ -321,6 +402,118 @@ export default function Export() {
           {feedback.length > 0 && `Showing ${feedback.length} responses • Last updated: ${new Date().toLocaleString()}`}
         </small>
       </div>
+
+      {/* ✅ Region Selection Modal */}
+      {modalOpen && (
+        <div
+          onClick={closeModal}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1050,
+            padding: '1rem'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-4 shadow-lg"
+            style={{ width: '100%', maxWidth: '440px' }}
+          >
+            {/* Modal Header */}
+            <div className="d-flex justify-content-between align-items-center px-4 pt-4 pb-2">
+              <div>
+                <h5 className="fw-bold mb-0" style={{ color: '#2d3748' }}>
+                  Select Survey Region(s)
+                </h5>
+                <small className="text-muted">
+                  Format: <strong>{exportType === 'excel' ? 'Excel (.xlsx)' : 'CSV (.csv)'}</strong>
+                </small>
+              </div>
+              <button
+                onClick={closeModal}
+                className="btn btn-sm btn-light rounded-circle d-flex align-items-center justify-content-center"
+                style={{ width: 32, height: 32 }}
+                disabled={exporting}
+              >
+                <FiX size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-4 py-3">
+              <label className="d-flex align-items-center gap-2 py-2 fw-semibold" style={{ cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  className="form-check-input mt-0"
+                  checked={allRegions}
+                  onChange={handleAllToggle}
+                />
+                All Regions
+              </label>
+
+              <hr className="my-2" />
+
+              {availableRegions.length === 0 ? (
+                <p className="text-muted small mb-0">No regions available.</p>
+              ) : (
+                availableRegions.map(region => (
+                  <label
+                    key={region}
+                    className="d-flex align-items-center gap-2 py-2"
+                    style={{ cursor: allRegions ? 'not-allowed' : 'pointer', opacity: allRegions ? 0.5 : 1 }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="form-check-input mt-0"
+                      disabled={allRegions}
+                      checked={selectedRegions.includes(region)}
+                      onChange={() => toggleRegion(region)}
+                    />
+                    {region}
+                  </label>
+                ))
+              )}
+
+              <div className="mt-3 p-3 rounded-3" style={{ background: '#f8f9fa' }}>
+                <small className="text-muted">
+                  Will export <strong className="text-dark">{previewCount}</strong> response{previewCount === 1 ? '' : 's'}
+                  {!allRegions && selectedRegions.length > 0 && (
+                    <> from <strong className="text-dark">{selectedRegions.join(', ')}</strong></>
+                  )}
+                </small>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="d-flex justify-content-end gap-2 px-4 pb-4">
+              <button
+                onClick={closeModal}
+                className="btn btn-outline-secondary rounded-3 px-4"
+                disabled={exporting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={runExport}
+                className="btn rounded-3 px-4 text-white"
+                disabled={exporting || (!allRegions && selectedRegions.length === 0)}
+                style={{
+                  background: exportType === 'excel'
+                    ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
+                    : 'linear-gradient(135deg, #6c757d 0%, #495057 100%)',
+                  border: 'none'
+                }}
+              >
+                {exporting ? 'Exporting...' : 'Export Selected'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
