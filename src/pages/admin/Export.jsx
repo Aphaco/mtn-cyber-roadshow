@@ -594,7 +594,7 @@ export default function Export() {
   }
 
   // ---------- GUESTS ----------
-  // ✅ Two-query approach. Forces String() on both sides of the lookup
+  // Two-query approach. Forces String() on both sides of the lookup
   // so int8-as-string vs int8-as-number can never mismatch.
   const fetchGuests = async () => {
     const { data: guestRows, error: gErr } = await supabase
@@ -602,7 +602,6 @@ export default function Export() {
       .select('id, survey_completed, location_id')
 
     if (gErr) {
-      console.error('❌ Guests fetch error:', gErr)
       return
     }
 
@@ -611,7 +610,6 @@ export default function Export() {
       .select('id, name')
 
     if (lErr) {
-      console.error('❌ Locations fetch error:', lErr)
       return
     }
 
@@ -628,11 +626,6 @@ export default function Export() {
       location_id: g.location_id,
       region: locMap[String(g.location_id)] || 'Unknown'
     }))
-
-    // Diagnostic log — remove once verified
-    const matched = merged.filter(m => m.region !== 'Unknown').length
-    console.log('✅ Guests merged:', merged.length, '| matched to a region:', matched)
-    if (merged[0]) console.log('👀 First merged guest:', merged[0])
 
     setGuests(merged)
   }
@@ -811,7 +804,6 @@ export default function Export() {
 
       setModalOpen(false)
     } catch (err) {
-      console.error('❌ Export error:', err)
       alert('Export failed: ' + err.message)
     } finally {
       setExporting(false)
